@@ -2,7 +2,6 @@ name: Build Android APK
 
 on:
   workflow_dispatch:
-  push:
 
 jobs:
   build:
@@ -12,39 +11,42 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Unzip source (v2)
-        run: |
-          set -e
-          unzip -o cryptosage_ai_lite_source_v2.zip -d tmp_src
-          echo "UNZIPPED:"
-          find tmp_src -maxdepth 3 -type d -print
+        run: unzip -o cryptosage_ai_lite_source_v2.zip -d tmp_src
 
       - name: Find app_src
         run: |
-          set -e
           APP_SRC=$(find tmp_src -type d -name app_src | head -n 1)
           if [ -z "$APP_SRC" ]; then echo "app_src not found"; exit 1; fi
           echo "APP_SRC=$APP_SRC" >> $GITHUB_ENV
-          echo "Found app_src at: $APP_SRC"
-          ls -la "$APP_SRC"
 
-      - name: Setup Flutter
+      - name: Setup Flutter (compatible version)
         uses: subosito/flutter-action@v2
         with:
-          channel: stable
+          flutter-version: '3.7.12'
 
       - name: Create Flutter project & copy sources
         run: |
           set -e
           flutter --version
-          # valid project name, android only
           flutter create . --project-name cryptosage_lite --platforms=android
           rm -rf lib pubspec.yaml
           mkdir -p lib
           cp -a "$APP_SRC/lib/." ./lib/
           cp "$APP_SRC/pubspec.yaml" ./pubspec.yaml
-          echo "Project lib after copy:"
-          ls -la lib
           test -f lib/main.dart
+
+      - name: Patch Flutter API change (CardTheme -> CardThemeData)
+        run: |
+          if grep -q '\bCardTheme\b' lib/theme.dart; then
+            sed -i 's/\bCardTheme\b/CardThemeData/g' lib/theme.dart
+          fi
+
+      - name: Set Android NDK version in Kotlin DSL
+        run: |
+          FILE=android/app/build.gradle.kts
+          if [ -f "$FILE" ]; then
+            sed -i '0,/android {/s/android {/android {\\n    ndkVersion = \"27.0.12077973\"/' "$FILE"
+          fi
 
       - name: Get packages
         run: flutter pub get
