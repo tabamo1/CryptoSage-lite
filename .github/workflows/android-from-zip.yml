@@ -34,14 +34,33 @@ jobs:
         with:
           channel: stable
 
-      - name: Flutter create scaffold
-        run: |
-          set -e
-          flutter --version
-          flutter create . --project-name cryptosage_lite --platforms=android
-          rm -rf lib pubspec.yaml
-          cp -r "$APP_SRC/lib" ./lib
-          cp "$APP_SRC/pubspec.yaml" ./pubspec.yaml
+      - - name: Flutter create scaffold
+  run: |
+    set -e
+    flutter --version
+    flutter create . --project-name cryptosage_lite --platforms=android
+    # overwrite scaffold with our sources from located app_src
+    rm -rf lib pubspec.yaml
+    mkdir -p lib
+    cp -a "$APP_SRC/lib/." ./lib/
+    cp "$APP_SRC/pubspec.yaml" ./pubspec.yaml
+
+- name: Verify sources
+  run: |
+    set -e
+    echo "APP_SRC=$APP_SRC"
+    echo "Listing APP_SRC/lib:"
+    ls -la "$APP_SRC/lib" || true
+    echo "Listing project lib after copy:"
+    ls -la lib || true
+    # Fallback: if main.dart missing, try a second copy with rsync
+    if [ ! -f lib/main.dart ]; then
+      echo "main.dart missing; retrying copy"
+      rm -rf lib
+      mkdir -p lib
+      rsync -av "$APP_SRC/lib/" ./lib/ || cp -a "$APP_SRC/lib/." ./lib/
+    fi
+    test -f lib/main.dart
 
       - name: Get packages
         run: flutter pub get
