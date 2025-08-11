@@ -1,75 +1,34 @@
-name: Android APK (from zip)
+name: Build Android APK
 
 on:
   workflow_dispatch:
-  push:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v3
 
-      - name: Unzip source
-        run: |
-          set -e
-          unzip -o cryptosage_ai_lite_source.zip -d tmp_src
-          echo "UNZIPPED:"
-          ls -la tmp_src
+    - name: Unzip source code
+      run: |
+        unzip cryptosage_ai_lite_source_v2.zip -d app
 
-      - name: Locate app_src
-        run: |
-          set -e
-          APP_SRC=$(find tmp_src -type d -name app_src | head -n 1)
-          if [ -z "$APP_SRC" ]; then
-            echo "app_src not found after unzip"; exit 1
-          fi
-          echo "APP_SRC=$APP_SRC" >> $GITHUB_ENV
-          echo "Found app_src at: $APP_SRC"
-          ls -la "$APP_SRC"
+    - name: Set up JDK
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: 'temurin'
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
+    - name: Grant execute permission for gradlew
+      run: chmod +x ./app/gradlew
 
-      - - name: Flutter create scaffold
-  run: |
-    set -e
-    flutter --version
-    flutter create . --project-name cryptosage_lite --platforms=android
-    # overwrite scaffold with our sources from located app_src
-    rm -rf lib pubspec.yaml
-    mkdir -p lib
-    cp -a "$APP_SRC/lib/." ./lib/
-    cp "$APP_SRC/pubspec.yaml" ./pubspec.yaml
+    - name: Build APK
+      run: cd app && ./gradlew assembleRelease
 
-- name: Verify sources
-  run: |
-    set -e
-    echo "APP_SRC=$APP_SRC"
-    echo "Listing APP_SRC/lib:"
-    ls -la "$APP_SRC/lib" || true
-    echo "Listing project lib after copy:"
-    ls -la lib || true
-    # Fallback: if main.dart missing, try a second copy with rsync
-    if [ ! -f lib/main.dart ]; then
-      echo "main.dart missing; retrying copy"
-      rm -rf lib
-      mkdir -p lib
-      rsync -av "$APP_SRC/lib/" ./lib/ || cp -a "$APP_SRC/lib/." ./lib/
-    fi
-    test -f lib/main.dart
-
-      - name: Get packages
-        run: flutter pub get
-
-      - name: Build APK (release)
-        run: flutter build apk --release
-
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: cryptosage-ai-lite-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+    - name: Upload APK
+      uses: actions/upload-artifact@v3
+      with:
+        name: CryptoSageAI-Lite
+        path: app/app/build/outputs/apk/release/*.apk
