@@ -13,34 +13,35 @@ jobs:
 
       - name: Unzip source
         run: |
+          set -e
           unzip -o cryptosage_ai_lite_source.zip -d tmp_src
-          echo "Unzipped:"
+          echo "UNZIPPED:"
           ls -la tmp_src
 
       - name: Locate app_src
-        id: locate
         run: |
+          set -e
           APP_SRC=$(find tmp_src -type d -name app_src | head -n 1)
           if [ -z "$APP_SRC" ]; then
             echo "app_src not found after unzip"; exit 1
           fi
-          echo "Found app_src at: $APP_SRC"
           echo "APP_SRC=$APP_SRC" >> $GITHUB_ENV
+          echo "Found app_src at: $APP_SRC"
           ls -la "$APP_SRC"
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'
+          channel: stable
 
-      - - name: Flutter create scaffold
-  run: |
-    flutter --version
-    # Use a valid project name (underscores only)
-    flutter create . --project-name cryptosage_lite --platforms=android
-    rm -rf lib pubspec.yaml
-    cp -r "$APP_SRC/lib" ./lib
-    cp "$APP_SRC/pubspec.yaml" ./pubspec.yaml
+      - name: Flutter create scaffold
+        run: |
+          set -e
+          flutter --version
+          flutter create . --project-name cryptosage_lite --platforms=android
+          rm -rf lib pubspec.yaml
+          cp -r "$APP_SRC/lib" ./lib
+          cp "$APP_SRC/pubspec.yaml" ./pubspec.yaml
 
       - name: Get packages
         run: flutter pub get
