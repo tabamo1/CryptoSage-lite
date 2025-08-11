@@ -6,29 +6,45 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Unzip source code
-      run: |
-        unzip cryptosage_ai_lite_source_v2.zip -d app
+      - name: Unzip source (v2)
+        run: unzip -o cryptosage_ai_lite_source_v2.zip -d tmp_src
 
-    - name: Set up JDK
-      uses: actions/setup-java@v3
-      with:
-        java-version: '17'
-        distribution: 'temurin'
+      - name: Find app_src
+        run: |
+          APP_SRC=$(find tmp_src -type d -name app_src | head -n 1)
+          if [ -z "$APP_SRC" ]; then echo "app_src not found"; exit 1; fi
+          echo "APP_SRC=$APP_SRC" >> $GITHUB_ENV
 
-    - name: Grant execute permission for gradlew
-      run: chmod +x ./app/gradlew
+      - name: Setup Flutter (compatible version)
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.7.12'   # avoids CardTheme break
 
-    - name: Build APK
-      run: cd app && ./gradlew assembleRelease
+      - name: Create Flutter project & copy sources
+        run: |
+          flutter create . --project-name cryptosage_lite --platforms=android
+          rm -rf lib pubspec.yaml
+          mkdir -p lib
+          cp -a "$APP_SRC/lib/." ./lib/
+          cp "$APP_SRC/pubspec.yaml" ./pubspec.yaml
+          test -f lib/main.dart
 
-    - name: Upload APK
-      uses: actions/upload-artifact@v3
-      with:
-        name: CryptoSageAI-Lite
-        path: app/app/build/outputs/apk/release/*.apk
+      - name: Set Android NDK version
+        run: |
+          sed -i '/android {/a \ \ \ \ ndkVersion "27.0.12077973"' android/app/build.gradle
+
+      - name: Get packages
+        run: flutter pub get
+
+      - name: Build APK (release)
+        run: flutter build apk --release
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: cryptosage-ai-lite-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
