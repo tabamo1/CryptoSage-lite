@@ -13,8 +13,9 @@ jobs:
 
       - name: Unzip source
         run: |
-          ls -la
-          unzip -o cryptosage_ai_lite_source.zip -d .
+          unzip -o cryptosage_ai_lite_source.zip -d tmp_src
+          # Move all extracted files to root
+          mv tmp_src/*/* . || mv tmp_src/* . 
           ls -la
 
       - name: Setup Flutter
