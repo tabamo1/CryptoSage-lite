@@ -33,14 +33,14 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Flutter create scaffold
-        run: |
-          flutter --version
-          flutter create .
-          # Overwrite scaffold with our sources from the located app_src
-          rm -rf lib pubspec.yaml
-          cp -r "$APP_SRC/lib" ./lib
-          cp "$APP_SRC/pubspec.yaml" ./pubspec.yaml
+      - - name: Flutter create scaffold
+  run: |
+    flutter --version
+    # Use a valid project name (underscores only)
+    flutter create . --project-name cryptosage_lite --platforms=android
+    rm -rf lib pubspec.yaml
+    cp -r "$APP_SRC/lib" ./lib
+    cp "$APP_SRC/pubspec.yaml" ./pubspec.yaml
 
       - name: Get packages
         run: flutter pub get
