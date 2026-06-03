@@ -10,35 +10,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Unzip source (v2)
-        run: unzip -o cryptosage_ai_lite_source_v2.zip -d tmp_src
-
-      - name: Find app_src
-        run: |
-          APP_SRC=$(find tmp_src -type d -name app_src | head -n 1)
-          if [ -z "$APP_SRC" ]; then echo "app_src not found"; exit 1; fi
-          echo "APP_SRC=$APP_SRC" >> $GITHUB_ENV
-
-      - name: Setup Flutter (compatible version)
+      - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.7.12'
+          channel: stable
 
-      - name: Create Flutter project & copy sources
+      - name: Prepare Flutter project
         run: |
           set -e
+          cp -a lib /tmp/cryptosage_lib
+          cp pubspec.yaml /tmp/cryptosage_pubspec.yaml
           flutter create . --project-name cryptosage_lite --platforms=android
           rm -rf lib pubspec.yaml
-          mkdir -p lib
-          cp -a "$APP_SRC/lib/." ./lib/
-          cp "$APP_SRC/pubspec.yaml" ./pubspec.yaml
+          cp -a /tmp/cryptosage_lib ./lib
+          cp /tmp/cryptosage_pubspec.yaml ./pubspec.yaml
           test -f lib/main.dart
-
-      - name: Patch Flutter API change (CardTheme to CardThemeData)
-        run: |
-          if grep -q 'CardTheme' lib/theme.dart; then
-            sed -i 's/CardTheme(/CardThemeData(/g' lib/theme.dart
-          fi
 
       - name: Set Android NDK version
         run: |
@@ -54,7 +40,7 @@ jobs:
       - name: Get packages
         run: flutter pub get
 
-      - name: Build APK (release)
+      - name: Build APK
         run: flutter build apk --release
 
       - name: Upload APK
