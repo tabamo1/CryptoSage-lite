@@ -1,0 +1,76 @@
+name: Semgrep CE Pilot Scan
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  semgrep:
+    name: semgrep-ce/scan
+    runs-on: ubuntu-latest
+    if: github.actor != 'dependabot[bot]'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Unzip source
+        run: unzip -o cryptosage_ai_lite_source_v2.zip -d tmp_src
+
+      - name: Prepare scan target
+        run: |
+          set -e
+          APP_SRC=$(find tmp_src -type d -name app_src | head -n 1)
+          if [ -z "$APP_SRC" ]; then
+            echo "app_src not found"
+            exit 1
+          fi
+          mkdir -p scan_src
+          cp -a "$APP_SRC/." scan_src/
+          test -f scan_src/lib/main.dart
+
+      - name: Install Semgrep
+        run: pipx install semgrep
+
+      - name: Run Semgrep scan
+        run: semgrep scan --config auto --metrics=off --json --output semgrep-results.json scan_src
+
+      - name: Summarize Semgrep findings
+        run: |
+          python - <<'PY'
+          import json
+          from collections import Counter
+
+          with open('semgrep-results.json', 'r', encoding='utf-8') as f:
+              data = json.load(f)
+
+          findings = data.get('results', [])
+          severities = Counter(
+              finding.get('extra', {}).get('severity', 'UNKNOWN')
+              for finding in findings
+          )
+
+          print(f"Semgrep findings: {len(findings)}")
+          if severities:
+              print("Severity counts:")
+              for severity, count in sorted(severities.items()):
+                  print(f"- {severity}: {count}")
+          else:
+              print("No findings reported.")
+
+          for finding in findings[:10]:
+              extra = finding.get('extra', {})
+              path = finding.get('path', 'unknown path')
+              start = finding.get('start', {}).get('line', '?')
+              rule_id = finding.get('check_id', 'unknown rule')
+              message = extra.get('message', '').replace('\n', ' ')
+              severity = extra.get('severity', 'UNKNOWN')
+              print(f"{severity} {path}:{start} {rule_id} - {message}")
+          PY
