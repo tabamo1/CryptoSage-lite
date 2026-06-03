@@ -21,21 +21,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Unzip source
-        run: unzip -o cryptosage_ai_lite_source_v2.zip -d tmp_src
-
-      - name: Prepare scan target
-        run: |
-          set -e
-          APP_SRC=$(find tmp_src -type d -name app_src | head -n 1)
-          if [ -z "$APP_SRC" ]; then
-            echo "app_src not found"
-            exit 1
-          fi
-          mkdir -p scan_src
-          cp -a "$APP_SRC/." scan_src/
-          test -f scan_src/lib/main.dart
-
       - name: Install Semgrep
         run: pipx install semgrep
 
@@ -47,7 +32,7 @@ jobs:
             --metrics=off \
             --json \
             --output semgrep-results.json \
-            scan_src
+            lib pubspec.yaml .github/workflows
 
       - name: Summarize Semgrep findings
         run: |
