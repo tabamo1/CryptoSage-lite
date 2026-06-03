@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Unzip source (v2)
         run: unzip -o cryptosage_ai_lite_source_v2.zip -d tmp_src
