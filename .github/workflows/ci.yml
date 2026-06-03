@@ -1,0 +1,67 @@
+name: Validate Flutter Source
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Unzip source
+        run: unzip -o cryptosage_ai_lite_source_v2.zip -d tmp_src
+
+      - name: Find app_src
+        run: |
+          APP_SRC=$(find tmp_src -type d -name app_src | head -n 1)
+          if [ -z "$APP_SRC" ]; then
+            echo "app_src not found"
+            exit 1
+          fi
+          echo "APP_SRC=$APP_SRC" >> "$GITHUB_ENV"
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.7.12'
+
+      - name: Prepare Flutter project
+        run: |
+          set -e
+          flutter create . --project-name cryptosage_lite --platforms=android
+          rm -rf lib pubspec.yaml test
+          mkdir -p lib
+          cp -a "$APP_SRC/lib/." ./lib/
+          cp "$APP_SRC/pubspec.yaml" ./pubspec.yaml
+          if [ -d "$APP_SRC/test" ]; then
+            cp -a "$APP_SRC/test" ./test
+          fi
+          test -f lib/main.dart
+
+      - name: Patch Flutter API change
+        run: |
+          if grep -q 'CardTheme' lib/theme.dart; then
+            sed -i 's/CardTheme(/CardThemeData(/g' lib/theme.dart
+          fi
+
+      - name: Get packages
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test
+        run: |
+          if [ -d test ]; then
+            flutter test
+          else
+            echo "No test directory found; skipping tests."
+          fi
