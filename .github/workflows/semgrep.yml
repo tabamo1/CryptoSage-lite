@@ -40,7 +40,14 @@ jobs:
         run: pipx install semgrep
 
       - name: Run Semgrep scan
-        run: semgrep scan --config auto --metrics=off --json --output semgrep-results.json scan_src
+        run: |
+          semgrep scan \
+            --config p/default \
+            --config p/secrets \
+            --metrics=off \
+            --json \
+            --output semgrep-results.json \
+            scan_src
 
       - name: Summarize Semgrep findings
         run: |
