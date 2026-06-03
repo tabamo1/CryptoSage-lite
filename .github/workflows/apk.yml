@@ -31,10 +31,10 @@ jobs:
           FILE_GRADLE=android/app/build.gradle
           FILE_KTS=android/app/build.gradle.kts
           if [ -f "$FILE_KTS" ]; then
-            sed -i '0,/android {/s//android {\\n    ndkVersion = "27.0.12077973"/' "$FILE_KTS"
+            sed -i '0,/android {/s//android {\n    ndkVersion = "27.0.12077973"/' "$FILE_KTS"
           fi
           if [ -f "$FILE_GRADLE" ]; then
-            sed -i '0,/android {/s//android {\\n        ndkVersion "27.0.12077973"/' "$FILE_GRADLE"
+            sed -i '0,/android {/s//android {\n        ndkVersion "27.0.12077973"/' "$FILE_GRADLE"
           fi
 
       - name: Get packages
